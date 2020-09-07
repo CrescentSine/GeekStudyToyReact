@@ -1,5 +1,9 @@
 const RENDER_TO_DOM = Symbol('render to dom');
 
+function notObject(val) {
+    return typeof val !== 'object' || val === null;
+}
+
 export class Component {
     constructor() {
         this.props = Object.create(null);
@@ -19,6 +23,24 @@ export class Component {
     rerender() {
         this._range.deleteContents();
         this[RENDER_TO_DOM](this._range);
+    }
+    setState(newState) {
+        if (notObject(this.state)) {
+            this.state = newState;
+            this.rerender();
+            return;
+        }
+
+        let merge = (oldState, newState) => {
+            for (let p in newState) {
+                if (notObject(oldState[p])) {
+                    oldState[p] = newState[p];
+                }
+                else merge(oldState[p], newState[p]);
+            }
+        }
+        merge(this.state, newState);
+        this.rerender();
     }
 }
 
