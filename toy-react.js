@@ -21,8 +21,16 @@ export class Component {
         this.render()[RENDER_TO_DOM](dom_range);
     }
     rerender() {
-        this._range.deleteContents();
-        this[RENDER_TO_DOM](this._range);
+        let removeRange = this._range;
+        let insertRange = removeRange.cloneRange();
+        insertRange.collapse(true);
+
+        this[RENDER_TO_DOM](insertRange);
+
+        removeRange.setStart(
+            insertRange.endContainer,
+            insertRange.endOffset);
+        removeRange.deleteContents();
     }
     setState(newState) {
         if (notObject(this.state)) {
@@ -75,6 +83,9 @@ class ElementWrapper {
             this.root.addEventListener(
                 RegExp.$1.replace(/^[\s\S]/,
                     c => c.toLowerCase()), value);
+        }
+        else if (key === "className") {
+            this.root.setAttribute("class", value);
         }
         else {
             this.root.setAttribute(key, value);
