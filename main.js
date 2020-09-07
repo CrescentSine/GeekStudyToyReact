@@ -1,4 +1,4 @@
-import { createElement, Component, render } from "./toy-react";
+import { createElement, Component, Fragment, render } from "./toy-react";
 
 class MyComponent extends Component {
     render() {
@@ -11,8 +11,13 @@ class MyComponent extends Component {
 }
 
 render(<MyComponent id="a" title="my component">
-    <div>abc</div>
-    <div>def</div>
-    <div>ghi</div>
-    <p>#66ccff</p>
+    <Fragment key="alpha">
+        <div>abc</div>
+        <div>def</div>
+        <div>ghi</div>
+    </Fragment>
+    <>
+        <p>#66ccff</p>
+        <p>#66ccff</p>
+    </>
 </MyComponent>, document.body);

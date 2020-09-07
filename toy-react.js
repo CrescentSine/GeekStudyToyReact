@@ -18,6 +18,23 @@ export class Component {
     }
 }
 
+export class Fragment {
+    constructor() {
+        this.key;
+        this._root = [];
+    }
+    setAttribute(key, value) {
+        if (key !== "key") return;
+        this.key = value;
+    }
+    appendChild(comp) {
+        this._root.push(comp)
+    }
+    get root() {
+        return this._root.flatMap(c => c.root);
+    }
+}
+
 class ElementWrapper {
     constructor(tagName) {
         this.root = document.createElement(tagName);
@@ -26,7 +43,13 @@ class ElementWrapper {
         this.root.setAttribute(key, value);
     }
     appendChild(comp) {
-        this.root.appendChild(comp.root);
+        let childEle = comp.root;
+        if (!(childEle instanceof Array)) {
+            childEle = [childEle];
+        }
+        childEle.forEach(ele => {
+            this.root.appendChild(ele);
+        });
     }
 }
 
