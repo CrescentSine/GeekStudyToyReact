@@ -51,6 +51,9 @@ export function createElement(type, attrs, ...childs) {
 
     let insertChilds = (childs) => {
         for (let child of childs) {
+            if (child === void 0 || child === null) {
+                continue;
+            }
             if (typeof child === "string") {
                 child = new TextWrapper(child);
             }

@@ -2,16 +2,17 @@ import { createElement, Component, render } from "./toy-react";
 
 class MyComponent extends Component {
     render() {
-        return <div class={this.props.class}>
-            <h1 id={this.props.id}>my component</h1>
+        let { title, ...props } = this.props;
+        return <div {...props}>
+            <h1>{title}</h1>
             {this.children}
         </div>;
     }
 }
 
-render(<MyComponent id="a" class="c">
+render(<MyComponent id="a" title="my component">
     <div>abc</div>
-    <div></div>
-    <div></div>
-    <div></div>
+    <div>def</div>
+    <div>ghi</div>
+    <p>#66ccff</p>
 </MyComponent>, document.body);
