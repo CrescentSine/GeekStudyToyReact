@@ -1,10 +1,18 @@
 import { createElement, Component, Fragment, render } from "./toy-react";
 
 class MyComponent extends Component {
+    constructor() {
+        super();
+        this.state = {
+            a: 1,
+            b: 2,
+        }
+    }
     render() {
         let { title, ...props } = this.props;
         return <div {...props}>
             <h1>{title}</h1>
+            <span>{this.state.a.toString()}</span><br />
             {this.children}
         </div>;
     }

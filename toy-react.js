@@ -1,3 +1,5 @@
+const RENDER_TO_DOM = Symbol('render to dom');
+
 export class Component {
     constructor() {
         this.props = Object.create(null);
@@ -10,28 +12,28 @@ export class Component {
     appendChild(comp) {
         this.children.push(comp)
     }
-    get root() {
-        if (!this._root) {
-            this._root = this.render().root;
-        }
-        return this._root;
+    [RENDER_TO_DOM](dom_range) {
+        this.render()[RENDER_TO_DOM](dom_range);
     }
 }
 
 export class Fragment {
     constructor() {
         this.key;
-        this._root = [];
+        this._childs = [];
     }
     setAttribute(key, value) {
         if (key !== "key") return;
         this.key = value;
     }
     appendChild(comp) {
-        this._root.push(comp)
+        this._childs.push(comp)
     }
-    get root() {
-        return this._root.flatMap(c => c.root);
+    [RENDER_TO_DOM](dom_range) {
+        return this._childs.map(c => {
+            c[RENDER_TO_DOM](dom_range);
+            dom_range.collapse();
+        });
     }
 }
 
@@ -43,19 +45,24 @@ class ElementWrapper {
         this.root.setAttribute(key, value);
     }
     appendChild(comp) {
-        let childEle = comp.root;
-        if (!(childEle instanceof Array)) {
-            childEle = [childEle];
-        }
-        childEle.forEach(ele => {
-            this.root.appendChild(ele);
-        });
+        let range = document.createRange();
+        range.setStart(this.root, this.root.childNodes.length);
+        range.setEnd(this.root, this.root.childNodes.length);
+        comp[RENDER_TO_DOM](range);
+    }
+    [RENDER_TO_DOM](dom_range) {
+        dom_range.deleteContents();
+        dom_range.insertNode(this.root);
     }
 }
 
 class TextWrapper {
     constructor(text) {
         this.root = document.createTextNode(text);
+    }
+    [RENDER_TO_DOM](dom_range) {
+        dom_range.deleteContents();
+        dom_range.insertNode(this.root);
     }
 }
 
@@ -91,5 +98,9 @@ export function createElement(type, attrs, ...childs) {
 }
 
 export function render(component, parentElement) {
-    parentElement.appendChild(component.root);
+    let range = document.createRange();
+    range.setStart(parentElement, 0);
+    range.setEnd(parentElement, parentElement.childNodes.length);
+    range.deleteContents();
+    component[RENDER_TO_DOM](range)
 }
