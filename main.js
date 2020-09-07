@@ -12,20 +12,19 @@ class MyComponent extends Component {
         let { title, ...props } = this.props;
         return <div {...props}>
             <h1>{title}</h1>
-            <span>{this.state.a.toString()}</span><br />
-            {this.children}
+            <button onclick={()=>{ this.state.a++; this.rerender(); }}>add</button>
+            <span>{this.state.a.toString()}</span>
         </div>;
     }
 }
 
-render(<MyComponent id="a" title="my component">
-    <Fragment key="alpha">
-        <div>abc</div>
-        <div>def</div>
-        <div>ghi</div>
-    </Fragment>
+render(<Fragment key="alpha">
+    <div>abc</div>
+    <div>def</div>
+    <div>ghi</div>
     <>
+        <MyComponent title="mycomponent" />
         <p>#66ccff</p>
         <p>#66ccff</p>
     </>
-</MyComponent>, document.body);
+</Fragment>, document.body);

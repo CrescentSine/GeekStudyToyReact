@@ -4,7 +4,7 @@ export class Component {
     constructor() {
         this.props = Object.create(null);
         this.children = [];
-        this._root = null;
+        this._range = null;
     }
     setAttribute(key, value) {
         this.props[key] = value;
@@ -13,7 +13,12 @@ export class Component {
         this.children.push(comp)
     }
     [RENDER_TO_DOM](dom_range) {
+        this._range = dom_range;
         this.render()[RENDER_TO_DOM](dom_range);
+    }
+    rerender() {
+        this._range.deleteContents();
+        this[RENDER_TO_DOM](this._range);
     }
 }
 
@@ -30,10 +35,12 @@ export class Fragment {
         this._childs.push(comp)
     }
     [RENDER_TO_DOM](dom_range) {
-        return this._childs.map(c => {
+        this._childs.forEach(c => {
             c[RENDER_TO_DOM](dom_range);
+            dom_range = dom_range.cloneRange();
             dom_range.collapse();
         });
+        dom_range.detach();
     }
 }
 
@@ -42,7 +49,14 @@ class ElementWrapper {
         this.root = document.createElement(tagName);
     }
     setAttribute(key, value) {
-        this.root.setAttribute(key, value);
+        if (key.match(/^on([\s\S]+)$/)) {
+            this.root.addEventListener(
+                RegExp.$1.replace(/^[\s\S]/,
+                    c => c.toLowerCase()), value);
+        }
+        else {
+            this.root.setAttribute(key, value);
+        }
     }
     appendChild(comp) {
         let range = document.createRange();
