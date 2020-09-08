@@ -16,6 +16,13 @@ export class Component {
     appendChild(comp) {
         this.children.push(comp)
     }
+    get vdom() {
+        return this.render().vdom;
+    }
+    get vchildren() {
+        return this.children.map(child => child.vdom);
+    }
+    /** @param {Range} dom_range */
     [RENDER_TO_DOM](dom_range) {
         this._range = dom_range;
         this.render()[RENDER_TO_DOM](dom_range);
@@ -52,20 +59,22 @@ export class Component {
     }
 }
 
-export class Fragment {
+export class Fragment extends Component {
     constructor() {
+        super();
+        this.type = "#fragment";
         this.key;
-        this._childs = [];
     }
     setAttribute(key, value) {
         if (key !== "key") return;
-        this.key = value;
+        super.setAttribute(key, value);
     }
-    appendChild(comp) {
-        this._childs.push(comp)
+    get vdom() {
+        return this;
     }
+    /** @param {Range} dom_range */
     [RENDER_TO_DOM](dom_range) {
-        this._childs.forEach(c => {
+        this.children.forEach(c => {
             c[RENDER_TO_DOM](dom_range);
             dom_range = dom_range.cloneRange();
             dom_range.collapse();
@@ -74,39 +83,57 @@ export class Fragment {
     }
 }
 
-class ElementWrapper {
+class ElementWrapper extends Component {
     constructor(tagName) {
-        this.root = document.createElement(tagName);
+        super();
+        /** @type {keyof HTMLElementTagNameMap} */
+        this.type = tagName;
     }
-    setAttribute(key, value) {
-        if (key.match(/^on([\s\S]+)$/)) {
-            this.root.addEventListener(
-                RegExp.$1.replace(/^[\s\S]/,
-                    c => c.toLowerCase()), value);
-        }
-        else if (key === "className") {
-            this.root.setAttribute("class", value);
-        }
-        else {
-            this.root.setAttribute(key, value);
-        }
+    get vdom() {
+        return this;
     }
-    appendChild(comp) {
-        let range = document.createRange();
-        range.setStart(this.root, this.root.childNodes.length);
-        range.setEnd(this.root, this.root.childNodes.length);
-        comp[RENDER_TO_DOM](range);
-    }
+    /** @param {Range} dom_range */
     [RENDER_TO_DOM](dom_range) {
         dom_range.deleteContents();
-        dom_range.insertNode(this.root);
+
+        let root = document.createElement(this.type);
+        for (let key in this.props) {
+            let value = this.props[key];
+            if (key.match(/^on([\s\S]+)$/)) {
+                root.addEventListener(
+                    RegExp.$1.replace(/^[\s\S]/,
+                        c => c.toLowerCase()), value);
+            }
+            else if (key === "className") {
+                root.setAttribute("class", value);
+            }
+            else {
+                root.setAttribute(key, value);
+            }
+        }
+
+        for (let child of this.children) {
+            let childRange = document.createRange();
+            childRange.setStart(root, root.childNodes.length);
+            childRange.setEnd(root, root.childNodes.length);
+            child[RENDER_TO_DOM](childRange);
+        }
+
+        dom_range.insertNode(root);
     }
 }
 
-class TextWrapper {
+class TextWrapper extends Component {
     constructor(text) {
+        super();
+        this.type = "#text"
+        this.content = text;
         this.root = document.createTextNode(text);
     }
+    get vdom() {
+        return this;
+    }
+    /** @param {Range} dom_range */
     [RENDER_TO_DOM](dom_range) {
         dom_range.deleteContents();
         dom_range.insertNode(this.root);
