@@ -16,6 +16,36 @@ function replaceContent(range, node) {
 
 /** @typedef { ElementWrapper | TextWrapper | Fragment } VDOMTYPE */
 
+/**
+ * @param {VDOMTYPE} oldNode 
+ * @param {VDOMTYPE} newNode 
+ */
+function isSameNode(oldNode, newNode) {
+    if (oldNode.type !== newNode.type) return false;
+    if (Object.keys(oldNode.props).length !==
+        Object.keys(newNode.props).length) return false;
+    for (let key in newNode.props) {
+        if (newNode.props[key] !== oldNode.props[key]) {
+            return false;
+        }
+    }
+    if (newNode.type === "#text") {
+        if (newNode.content !== oldNode.content) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function mergeState(oldState, newState) {
+    for (let p in newState) {
+        if (notObject(oldState[p])) {
+            oldState[p] = newState[p];
+        }
+        else mergeState(oldState[p], newState[p]);
+    }
+}
+
 export class Component {
     constructor() {
         this.props = Object.create(null);
@@ -39,26 +69,6 @@ export class Component {
          * @param {VDOMTYPE} oldNode 
          * @param {VDOMTYPE} newNode 
          */
-        let isSameNode = (oldNode, newNode) => {
-            if (oldNode.type !== newNode.type) return false;
-            if (Object.keys(oldNode.props).length !==
-                Object.keys(newNode.props).length) return false;
-            for (let key in newNode.props) {
-                if (newNode.props[key] !== oldNode.props[key]) {
-                    return false;
-                }
-            }
-            if (newNode.type === "#text") {
-                if (newNode.content !== oldNode.content) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        /**
-         * @param {VDOMTYPE} oldNode 
-         * @param {VDOMTYPE} newNode 
-         */
         let update = (oldNode, newNode) => {
             if (!isSameNode(oldNode, newNode)) {
                 newNode[RENDER_TO_DOM](oldNode._range);
@@ -70,12 +80,14 @@ export class Component {
             }
 
             let newChilds = newNode.vchildren;
+            /** @type {typeof newNode} */
+            let oldSame = oldNode;
             /** @type {VDOMTYPE[]} */
-            let oldChilds = oldNode.vchildren;
+            let oldChilds = oldSame.vchildren;
 
             if (!newChilds.length) return;
             let tailChild = oldChilds[oldChilds.length - 1];
-            let tailRange = tailChild ? tailChild._range : oldNode._range;
+            let tailRange = tailChild ? tailChild._range : oldSame._range;
 
             for (let i = 0; i < newChilds.length; ++i) {
                 let newChild = newChilds[i];
@@ -104,16 +116,7 @@ export class Component {
             this.update();
             return;
         }
-
-        let merge = (oldState, newState) => {
-            for (let p in newState) {
-                if (notObject(oldState[p])) {
-                    oldState[p] = newState[p];
-                }
-                else merge(oldState[p], newState[p]);
-            }
-        }
-        merge(this.state, newState);
+        mergeState(this.state, newState);
         this.update();
     }
 }
@@ -146,6 +149,7 @@ export class Fragment extends VDOMhasVChildren {
         /** @type {"#fragment"} */
         this.type = "#fragment";
     }
+    /** @param {string} key @param {unknown} value */
     setAttribute(key, value) {
         if (key !== "key") return;
         super.setAttribute(key, value);
@@ -163,9 +167,9 @@ export class Fragment extends VDOMhasVChildren {
 }
 
 class ElementWrapper extends VDOMhasVChildren {
+    /** @param {keyof HTMLElementTagNameMap} tagName */
     constructor(tagName) {
         super();
-        /** @type {keyof HTMLElementTagNameMap} */
         this.type = tagName;
     }
     /** @param {Range} dom_range */
@@ -200,6 +204,7 @@ class ElementWrapper extends VDOMhasVChildren {
 }
 
 class TextWrapper extends VDOMType {
+    /** @param {string} text */
     constructor(text) {
         super();
         /** @type {"#text"} */
@@ -215,7 +220,13 @@ class TextWrapper extends VDOMType {
     }
 }
 
+/**
+ * @param {string|typeof Component} type 
+ * @param {Record<string, any>} attrs 
+ * @param {...string|Component|Component[]} childs 
+ */
 export function createElement(type, attrs, ...childs) {
+    /** @type {Component} */
     let e;
     if (typeof type === "string") {
         e = new ElementWrapper(type);
@@ -228,18 +239,20 @@ export function createElement(type, attrs, ...childs) {
         e.setAttribute(p, attrs[p]);
     }
 
+    /** @param {(string|Component|Component[])[]} childs */
     let insertChilds = (childs) => {
         for (let child of childs) {
             if (child === void 0 || child === null) {
                 continue;
             }
+            if (typeof child == "object" && child instanceof Array) {
+                insertChilds(child);
+                return;
+            }
             if (typeof child === "string") {
                 child = new TextWrapper(child);
             }
-            if (typeof child == "object" && child instanceof Array) {
-                insertChilds(child);
-            }
-            else e.appendChild(child);
+            e.appendChild(child);
         }
     }
     insertChilds(childs);
